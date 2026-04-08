@@ -1,0 +1,17 @@
+# Git files — not needed inside the container
+.git
+.gitignore
+ 
+# This file itself
+.dockerignore
+ 
+# Local environment/config overrides
+*.env
+.env
+ 
+# OS junk files
+.DS_Store
+Thumbs.db
+ 
+# Logs
+*.log
