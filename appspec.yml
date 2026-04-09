@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────
+# appspec.yml — Instructions for AWS CodeDeploy
+#
+# CodeDeploy reads this file to know:
+#   1. Where to copy files on EC2
+#   2. Which scripts to run and when
+# ─────────────────────────────────────────────────────────
+
+version: 0.0
+os: linux
+
+files:
+  # Copy all deployment files to /home/ec2-user/app on EC2
+  - source: /
+    destination: /home/ec2-user/app
+
+hooks:
+  # ApplicationStop: runs BEFORE the new version is deployed
+  # Stops the currently running Docker container
+  ApplicationStop:
+    - location: scripts/stop_app.sh
+      timeout: 30
+      runas: root
+
+  # ApplicationStart: runs AFTER files are copied to EC2
+  # Starts the new Docker container with updated image
+  ApplicationStart:
+    - location: scripts/start_app.sh
+      timeout: 60
+      runas: root

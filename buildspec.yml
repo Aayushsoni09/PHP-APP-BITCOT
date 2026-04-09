@@ -1,0 +1,55 @@
+version: 0.2
+
+# ─────────────────────────────────────────────────────────
+# buildspec.yml — Instructions for AWS CodeBuild
+#
+# CodeBuild reads this file to know what to do.
+# It will:
+#   1. Log in to ECR
+#   2. Build the Docker image
+#   3. Tag it
+#   4. Push it to ECR
+#   5. Create an imagedefinitions.json for CodeDeploy
+# ─────────────────────────────────────────────────────────
+
+phases:
+  pre_build:
+    commands:
+      # Log in to Amazon ECR
+      # This gets a temporary password from AWS and logs Docker into ECR
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 381491835701.dkr.ecr.ap-south-1.amazonaws.com
+      
+      # Set environment variables for image name
+      # CODEBUILD_RESOLVED_SOURCE_VERSION is the Git commit hash — makes each image unique
+      - REPOSITORY_URI=381491835701.dkr.ecr.ap-south-1.amazonaws.com/bitcot-registry
+      - IMAGE_TAG=$CODEBUILD_RESOLVED_SOURCE_VERSION
+
+  build:
+    commands:
+      # Build the Docker image using our Dockerfile
+      - echo Building the Docker image...
+      - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+      - docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:latest
+
+  post_build:
+    commands:
+      # Push both the commit-tagged and latest image to ECR
+      - echo Pushing the Docker image to ECR...
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:latest
+      
+      # Create imagedefinitions.json
+      # CodeDeploy reads this to know which image to pull and run
+      - echo Writing imagedefinitions.json...
+      - printf '[{"name":"bitcot-app","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+
+# ─────────────────────────────────────────────────────────
+# artifacts — files to pass to the next stage (CodeDeploy)
+# ─────────────────────────────────────────────────────────
+artifacts:
+  files:
+    - imagedefinitions.json
+    - appspec.yml
+    - scripts/start_app.sh
+    - scripts/stop_app.sh
